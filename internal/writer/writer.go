@@ -10,9 +10,10 @@ import (
 
 // Writer wraps an io.Writer with JSON encoding, buffering, and periodic flush.
 type Writer struct {
-	mu   sync.Mutex
-	bw   *bufio.Writer
-	done chan struct{}
+	mu       sync.Mutex
+	bw       *bufio.Writer
+	done     chan struct{}
+	closeOnce sync.Once
 }
 
 // New creates a Writer that flushes every flushInterval or when the
@@ -46,9 +47,14 @@ func (w *Writer) Flush() error {
 }
 
 // Close stops the periodic flush goroutine and flushes any remaining data.
+// Safe to call more than once.
 func (w *Writer) Close() error {
-	close(w.done)
-	return w.Flush()
+	var flushErr error
+	w.closeOnce.Do(func() {
+		close(w.done)
+		flushErr = w.Flush()
+	})
+	return flushErr
 }
 
 func (w *Writer) periodicFlush(interval time.Duration) {

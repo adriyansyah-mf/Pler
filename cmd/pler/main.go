@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -35,7 +36,11 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 
-	hostname, _ := os.Hostname()
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Printf("hostname (non-fatal): %v", err)
+		hostname = "unknown"
+	}
 
 	if err := os.MkdirAll(filepath.Dir(cfg.LogFile), 0750); err != nil {
 		log.Fatalf("mkdir log dir: %v", err)
@@ -68,8 +73,8 @@ func main() {
 	}
 	defer loader.Close()
 
+	m := metrics.New()
 	if err := os.MkdirAll("/run/pler", 0750); err == nil {
-		m := metrics.New()
 		if err := m.Serve("/run/pler/metrics.sock"); err != nil {
 			log.Printf("metrics socket (non-fatal): %v", err)
 		}
@@ -99,6 +104,7 @@ func main() {
 			}
 
 			if result.LostSamples > 0 {
+				m.IncrDropped(result.LostSamples)
 				entry := event.LogEntry{
 					Hostname:  hostname,
 					Program:   "pler",
@@ -111,7 +117,8 @@ func main() {
 			}
 
 			if result.Event == nil {
-				return
+				log.Printf("unexpected nil event — skipping")
+				continue
 			}
 
 			comm := nullStr(result.Event.Comm[:])
@@ -165,20 +172,30 @@ func nullStr(b []byte) string {
 	return string(b)
 }
 
+var uidCache, gidCache sync.Map // map[uint32]string
+
 func uidName(uid uint32) string {
-	u, err := user.LookupId(strconv.Itoa(int(uid)))
-	if err != nil {
-		return strconv.Itoa(int(uid))
+	if v, ok := uidCache.Load(uid); ok {
+		return v.(string)
 	}
-	return u.Username
+	name := strconv.Itoa(int(uid))
+	if u, err := user.LookupId(name); err == nil {
+		name = u.Username
+	}
+	uidCache.Store(uid, name)
+	return name
 }
 
 func gidName(gid uint32) string {
-	g, err := user.LookupGroupId(strconv.Itoa(int(gid)))
-	if err != nil {
-		return strconv.Itoa(int(gid))
+	if v, ok := gidCache.Load(gid); ok {
+		return v.(string)
 	}
-	return g.Name
+	name := strconv.Itoa(int(gid))
+	if g, err := user.LookupGroupId(name); err == nil {
+		name = g.Name
+	}
+	gidCache.Store(gid, name)
+	return name
 }
 
 // fsAppendFL is the Linux FS_APPEND_FL flag (linux/fs.h).

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
@@ -41,6 +42,7 @@ type Loader struct {
 	objs   ExecveObjects
 	links  []link.Link
 	reader *perf.Reader
+	once   sync.Once
 }
 
 // NewLoader loads the eBPF program, attaches both tracepoints, and
@@ -110,11 +112,13 @@ func (l *Loader) Read() (ReadResult, error) {
 }
 
 // Close detaches tracepoints and releases all BPF resources.
-// After Close, Read returns ErrClosed.
+// After Close, Read returns ErrClosed. Safe to call more than once.
 func (l *Loader) Close() {
-	l.reader.Close()
-	for _, lk := range l.links {
-		lk.Close()
-	}
-	l.objs.Close() //nolint:errcheck
+	l.once.Do(func() {
+		l.reader.Close() //nolint:errcheck
+		for _, lk := range l.links {
+			lk.Close()
+		}
+		l.objs.Close() //nolint:errcheck
+	})
 }

@@ -19,7 +19,7 @@
   <!-- Recon burst: same tool called 5+ times in 10s from same parent -->
   <rule id="100102" level="5" frequency="5" timeframe="10">
     <if_matched_sid>100100</if_matched_sid>
-    <field name="data.filename">whoami|/usr/bin/id$|uname|hostname|ifconfig|ip addr</field>
+    <field name="data.filename">whoami|/usr/bin/id$|uname|hostname|ifconfig|(^|/)ip$</field>
     <same_field>data.ppid</same_field>
     <description>pler: recon burst - $(data.comm) called repeatedly from same parent PID</description>
   </rule>
@@ -42,7 +42,7 @@
   <!-- Network tool from web process -->
   <rule id="100112" level="12">
     <if_sid>100100</if_sid>
-    <field name="data.filename">nc$|ncat$|nmap$|socat$|telnet$</field>
+    <field name="data.filename">(^|/)nc$|(^|/)ncat$|(^|/)nmap$|(^|/)socat$|(^|/)telnet$</field>
     <field name="data.cgroup">php.*fpm|apache2?|nginx|tomcat|gunicorn|uwsgi|node|passenger</field>
     <description>pler: network tool $(data.comm) spawned from web process as $(data.username)</description>
   </rule>
