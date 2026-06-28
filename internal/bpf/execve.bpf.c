@@ -18,9 +18,10 @@ struct event_t {
     __s32 retval;
     char  comm[16];
     char  filename[256];
-    char  argv[TOTAL_ARGBUF];
+    char  args[MAXARGS][ARGSIZE]; /* fixed 2D array — avoids verifier unbounded-pos issue */
+    __u8  argc;
     __u8  argv_truncated;
-    __u8  _pad[3];
+    __u8  _pad[2];
 };
 
 struct {
@@ -67,28 +68,27 @@ int handle_enter(struct trace_event_raw_sys_enter *ctx) {
     bpf_probe_read_user_str(ev->filename, sizeof(ev->filename), filename);
 
     const char *const *argv = (const char *const *)ctx->args[1];
-    int pos = 0;
-    __u8 truncated = 0;
+    __u8 argc = 0;
 
     #pragma unroll
     for (int i = 0; i < MAXARGS; i++) {
-        if (pos >= TOTAL_ARGBUF - ARGSIZE) {
-            truncated = 1;
-            break;
-        }
         const char *argp = NULL;
         bpf_probe_read_user(&argp, sizeof(argp), &argv[i]);
         if (!argp)
             break;
-        int n = bpf_probe_read_user_str(&ev->argv[pos], ARGSIZE, argp);
-        if (n <= 1)
-            break;
-        pos += n - 1;
-        if (pos < TOTAL_ARGBUF - 1)
-            ev->argv[pos++] = ' ';
+        bpf_probe_read_user_str(ev->args[i], ARGSIZE, argp);
+        argc++;
     }
-    if (pos > 0)
-        ev->argv[pos - 1] = '\0';
+    ev->argc = argc;
+
+    /* detect truncation: check if there's an arg beyond MAXARGS */
+    __u8 truncated = 0;
+    if (argc == MAXARGS) {
+        const char *extra = NULL;
+        bpf_probe_read_user(&extra, sizeof(extra), &argv[MAXARGS]);
+        if (extra)
+            truncated = 1;
+    }
     ev->argv_truncated = truncated;
 
     bpf_map_update_elem(&inflight, &pid, ev, BPF_ANY);

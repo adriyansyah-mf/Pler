@@ -21,9 +21,10 @@ type ExecveEventT struct {
 	Retval        int32
 	Comm          [16]int8
 	Filename      [256]int8
-	Argv          [2560]int8
+	Args          [20][128]int8
+	Argc          uint8
 	ArgvTruncated uint8
-	Pad           [3]uint8
+	Pad           [2]uint8
 }
 
 // LoadExecve returns the embedded CollectionSpec for Execve.

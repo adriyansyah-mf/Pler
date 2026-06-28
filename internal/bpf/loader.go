@@ -23,9 +23,10 @@ type RawEvent struct {
 	Retval        int32
 	Comm          [16]byte
 	Filename      [256]byte
-	Argv          [2560]byte // ARGSIZE(128) * MAXARGS(20)
+	Args          [20][128]byte // MAXARGS x ARGSIZE — joined in userspace
+	Argc          uint8
 	ArgvTruncated uint8
-	_             [3]byte // padding
+	_             [2]byte // padding
 }
 
 // ReadResult is what Loader.Read returns per call.

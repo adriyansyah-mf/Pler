@@ -151,7 +151,7 @@ func buildEntry(ev *bpf.RawEvent, info enricher.ProcInfo, hostname string) event
 		Group:         gidName(ev.Gid),
 		Comm:          nullStr(ev.Comm[:]),
 		Filename:      nullStr(ev.Filename[:]),
-		Argv:          strings.TrimRight(nullStr(ev.Argv[:]), " "),
+		Argv:          buildArgv(ev),
 		ArgvTruncated: ev.ArgvTruncated != 0,
 		Retval:        ev.Retval,
 		Success:       ev.Retval == 0,
@@ -161,6 +161,17 @@ func buildEntry(ev *bpf.RawEvent, info enricher.ProcInfo, hostname string) event
 	}
 	entry.SetTimestamp(time.Now())
 	return entry
+}
+
+func buildArgv(ev *bpf.RawEvent) string {
+	parts := make([]string, 0, ev.Argc)
+	for i := 0; i < int(ev.Argc); i++ {
+		s := nullStr(ev.Args[i][:])
+		if s != "" {
+			parts = append(parts, s)
+		}
+	}
+	return strings.Join(parts, " ")
 }
 
 func nullStr(b []byte) string {
