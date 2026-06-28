@@ -44,11 +44,5 @@ contents:
       mode: 0644
 
 scripts:
-  postinstall: |
-    mkdir -p /var/log/pler /run/pler
-    systemctl daemon-reload
-    systemctl enable --now pler
-
-  preremove: |
-    systemctl stop pler || true
-    systemctl disable pler || true
+  postinstall: packaging/postinstall.sh
+  preremove: packaging/preremove.sh
