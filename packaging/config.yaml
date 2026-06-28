@@ -1,0 +1,7 @@
+log_file:       /var/log/pler/execve.log
+ringbuf_size:   4194304
+flush_interval: 100ms
+flush_size:     65536
+max_args:       20
+arg_size:       128
+exclude_comms:  []

@@ -1,0 +1,26 @@
+[Unit]
+Description=pler - eBPF execve monitor for Wazuh
+Documentation=https://github.com/pler/pler
+After=network.target
+ConditionPathExists=/sys/kernel/btf/vmlinux
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/pler --config /etc/pler/config.yaml
+Restart=always
+RestartSec=2
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pler
+
+User=root
+AmbientCapabilities=CAP_BPF CAP_PERFMON CAP_SYS_RESOURCE
+CapabilityBoundingSet=CAP_BPF CAP_PERFMON CAP_SYS_RESOURCE
+
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/log/pler /run/pler /etc/pler
+NoNewPrivileges=false
+
+[Install]
+WantedBy=multi-user.target

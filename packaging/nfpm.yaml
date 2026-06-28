@@ -1,0 +1,54 @@
+name:        pler
+version:     "1.0.0"
+arch:        amd64
+platform:    linux
+maintainer:  "pler maintainers"
+description: "eBPF execve monitor — real-time process execution logging for Wazuh"
+license:     GPL-2.0
+
+contents:
+  - src: dist/pler
+    dst: /usr/bin/pler
+    file_info:
+      mode: 0755
+
+  - src: packaging/config.yaml
+    dst: /etc/pler/config.yaml
+    type: config|noreplace
+    file_info:
+      mode: 0644
+
+  - src: packaging/pler.service
+    dst: /lib/systemd/system/pler.service
+    file_info:
+      mode: 0644
+
+  - src: packaging/pler.logrotate
+    dst: /etc/logrotate.d/pler
+    file_info:
+      mode: 0644
+
+  - src: wazuh/pler_decoder.xml
+    dst: /usr/share/pler/wazuh/pler_decoder.xml
+    file_info:
+      mode: 0644
+
+  - src: wazuh/pler_rules.xml
+    dst: /usr/share/pler/wazuh/pler_rules.xml
+    file_info:
+      mode: 0644
+
+  - src: wazuh/ossec_localfile.conf
+    dst: /usr/share/pler/wazuh/ossec_localfile.conf
+    file_info:
+      mode: 0644
+
+scripts:
+  postinstall: |
+    mkdir -p /var/log/pler /run/pler
+    systemctl daemon-reload
+    systemctl enable --now pler
+
+  preremove: |
+    systemctl stop pler || true
+    systemctl disable pler || true

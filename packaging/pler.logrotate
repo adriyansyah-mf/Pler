@@ -1,0 +1,9 @@
+/var/log/pler/execve.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
