@@ -1,0 +1,9 @@
+<!-- Deploy to /var/ossec/etc/decoders/pler_decoder.xml on the Wazuh Manager -->
+<decoder name="pler">
+  <prematch>{"program":"pler"</prematch>
+</decoder>
+
+<decoder name="pler-fields">
+  <parent>pler</parent>
+  <plugin_decoder>JSON_Decoder</plugin_decoder>
+</decoder>
