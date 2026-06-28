@@ -1,0 +1,96 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Release
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install nfpm
+        run: |
+          curl -sSLo /tmp/nfpm.deb \
+            "https://github.com/goreleaser/nfpm/releases/download/v2.38.0/nfpm_2.38.0_amd64.deb"
+          sudo dpkg -i /tmp/nfpm.deb
+
+      - name: Set version
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Build binary
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=0 go build \
+            -ldflags="-X main.version=${GITHUB_REF_NAME}" \
+            -o dist/pler \
+            ./cmd/pler/
+
+      - name: Run unit tests
+        run: CGO_ENABLED=0 go test ./internal/... -count=1
+
+      - name: Build packages
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          # Patch version in nfpm.yaml
+          sed "s/version:.*/version: \"${VERSION}\"/" packaging/nfpm.yaml > /tmp/nfpm-release.yaml
+          nfpm package --config /tmp/nfpm-release.yaml --packager deb --target dist/
+          nfpm package --config /tmp/nfpm-release.yaml --packager rpm --target dist/
+          tar czf dist/pler_${VERSION}_linux_amd64.tar.gz -C dist pler
+          ls -lh dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "pler ${{ github.ref_name }}"
+          body: |
+            ## pler ${{ github.ref_name }}
+
+            eBPF execve monitor for Wazuh — real-time process execution logging.
+
+            ### Installation
+
+            **Debian/Ubuntu:**
+            ```bash
+            dpkg -i pler_${{ steps.version.outputs.VERSION }}_amd64.deb
+            ```
+
+            **RHEL/Rocky/Alma:**
+            ```bash
+            rpm -i pler-${{ steps.version.outputs.VERSION }}-1.x86_64.rpm
+            ```
+
+            **Manual:**
+            ```bash
+            tar xzf pler_${{ steps.version.outputs.VERSION }}_linux_amd64.tar.gz
+            install -m 0755 pler /usr/bin/pler
+            ```
+
+            ### Requirements
+            - Linux kernel 5.4+ (Ubuntu/Debian) or 4.18+ with BTF (RHEL 8+)
+            - `/sys/kernel/btf/vmlinux` must exist
+
+            ### Wazuh Integration
+            See `wazuh/` files in the repository for decoder and rules.
+          files: |
+            dist/*.deb
+            dist/*.rpm
+            dist/*.tar.gz
+          draft: false
+          prerelease: false
