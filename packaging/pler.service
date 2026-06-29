@@ -14,8 +14,10 @@ StandardError=journal
 SyslogIdentifier=pler
 
 User=root
-AmbientCapabilities=CAP_BPF CAP_PERFMON CAP_SYS_RESOURCE
-CapabilityBoundingSet=CAP_BPF CAP_PERFMON CAP_SYS_RESOURCE
+# kernel >= 5.8: CAP_BPF + CAP_PERFMON cukup
+# kernel 4.18 (RHEL/Rocky 8): butuh CAP_SYS_ADMIN untuk perf mmap
+AmbientCapabilities=CAP_BPF CAP_PERFMON CAP_SYS_RESOURCE CAP_SYS_ADMIN
+CapabilityBoundingSet=CAP_BPF CAP_PERFMON CAP_SYS_RESOURCE CAP_SYS_ADMIN
 
 PrivateTmp=true
 ProtectSystem=strict
